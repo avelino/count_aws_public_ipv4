@@ -42,7 +42,7 @@ for account_name, account in aws_accounts.items():
 
     # Dictionary to store the results for the account
     account_ips = []
-    
+
     # Get the account id
     sts_client = boto3.client(
         'sts',
@@ -51,7 +51,7 @@ for account_name, account in aws_accounts.items():
         aws_session_token=account['session_token']
     )
     account_id = sts_client.get_caller_identity().get('Account')
-    
+
     # Get the account name
     # If the account does not have permission to get the account name, it will print only the account id
     try:
@@ -62,10 +62,10 @@ for account_name, account in aws_accounts.items():
             print(f"Account ({account_id}) - Access denied to get Account Name")
         else:
             raise e
-    
+
     # Get the list of regions to check for the account
     # Use the selected_regions list if it is not empty
-    if len(selected_regions) > 0:
+    if selected_regions:
         ec2_regions = selected_regions
     else:
         ec2_client = boto3.client(
@@ -76,19 +76,19 @@ for account_name, account in aws_accounts.items():
             aws_session_token=account['session_token']
         )
         ec2_regions = [region['RegionName'] for region in ec2_client.describe_regions()['Regions']]
-    
+
     # region_first is used only to format the output
     region_first = True
     # Iterate through each region in the AWS account
     for region in ec2_regions:
         # List to store the results for the region
         region_ips = []
-        
+
         if region_first:
             region_first = False
-            print(f"    Checking region:", end=" ")
+            print("    Checking region:", end=" ")
         print(f"  {region}", sep=' ', end='', flush=True)
-       
+
        # EC2 resource for the region
         ec2_resource = boto3.resource(
             'ec2',
@@ -97,7 +97,7 @@ for account_name, account in aws_accounts.items():
             aws_secret_access_key=account['access_key'],
             aws_session_token=account['session_token']
         )
-        
+
         # Get running instances.
         instances = ec2_resource.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
         # Iterate through each instance in the region
@@ -117,12 +117,12 @@ for account_name, account in aws_accounts.items():
             # If it is not associated, it is added to the list
             if eip.public_ip not in region_ips:
                 region_ips.append(eip.public_ip)
-        
+
         # Store the results for the account and total
         account_ips += region_ips
         total_ips += region_ips
         print(f"({len(region_ips)})", end=' ', flush=True)
-            
+
     # Print the results for the accounts and total
     print()
     print(f"        Total IPs for account: {len(account_ips)}")
